@@ -77,9 +77,8 @@ def get_video():
     try:
                 ydl_opts = {
             'format': 'best',
-            'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
-        }
-
+            'extractor_args': {'youtube': {'player_client': ['ios', 'web']}},
+                }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=False)
             download_url = info.get('url')
