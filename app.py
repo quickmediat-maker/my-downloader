@@ -61,8 +61,7 @@ HTML_PAGE = """
             }
         }
     </script>
-</body>
-</html>
+    
 """
 
 @app.route('/')
@@ -76,7 +75,11 @@ def get_video():
     if not video_url:
         return jsonify({'success': False, 'message': 'URL nahi mila'})
     try:
-        ydl_opts = {'format': 'best'}
+                ydl_opts = {
+            'format': 'best',
+            'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
+        }
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=False)
             download_url = info.get('url')
