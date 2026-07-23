@@ -4,7 +4,6 @@ import os
 
 app = Flask(__name__)
 
-# Direct HTML page jo seedha browser mein dikhega
 HTML_PAGE = """
 <!DOCTYPE html>
 <html lang="hi">
@@ -13,55 +12,47 @@ HTML_PAGE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Downloader</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
-        body { background-color: #0f172a; color: #ffffff; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .container { background-color: #1e293b; padding: 24px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); width: 90%; max-width: 400px; text-align: center; }
-        h2 { color: #38bdf8; margin-bottom: 20px; }
-        input[type="text"] { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #475569; border-radius: 6px; background-color: #0f172a; color: #fff; font-size: 14px; outline: none; }
-        button { width: 100%; padding: 12px; background-color: #38bdf8; border: none; border-radius: 6px; color: #0f172a; font-weight: bold; font-size: 16px; cursor: pointer; }
-        button:hover { background-color: #0ea5e9; }
-        #statusMessage { margin-top: 15px; font-size: 14px; word-break: break-all; }
-        .loading { color: #38bdf8; }
-        .success { color: #22c55e; }
-        .error { color: #ef4444; }
-        a.download-link { display: inline-block; margin-top: 10px; padding: 8px 16px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; }
+        body { background-color: #0d1b2a; font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #1b263b; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); width: 320px; text-align: center; }
+        h2 { color: #48cae4; margin-bottom: 20px; }
+        input { width: 90%; padding: 10px; margin-bottom: 15px; border: 1px solid #415a77; border-radius: 6px; background: #0d1b2a; color: #fff; outline: none; }
+        button { background: #00b4d8; color: white; border: none; padding: 10px 15px; width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #0096c7; }
+        #statusMessage { margin-top: 15px; color: #ffb703; font-size: 14px; word-break: break-all; }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="card">
         <h2>Video Downloader</h2>
-        <input type="text" id="urlInput" placeholder="Yahan video ka link paste karein...">
+        <input type="text" id="urlInput" placeholder="Yahan link dalein...">
         <button onclick="fetchVideo()">Download Karein</button>
         <div id="statusMessage"></div>
     </div>
     <script>
-        async function fetchVideo() {
-            var url = document.getElementById('urlInput').value.trim();
-            var statusDiv = document.getElementById('statusMessage');
-            if(url === "") { alert("Pehle link dalein!"); return; }
-            statusDiv.className = "loading";
-            statusDiv.innerHTML = "Video fetch ho rahi hai...";
-            try {
-                let response = await fetch('/get-video', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: url })
-                });
-                let data = await response.json();
-                if(data.success) {
-                    statusDiv.className = "success";
-                    statusDiv.innerHTML = `<b>Taiyar hai!</b><br><a class="download-link" href="${data.download_url}" target="_blank">Download Karein</a>`;
-                } else {
-                    statusDiv.className = code = "error";
-                    statusDiv.innerHTML = "Error: " + data.message;
-                }
-            } catch (err) {
-                statusDiv.className = "error";
-                statusDiv.innerHTML = "Kuch galat ho gaya.";
+    async function fetchVideo() {
+        var url = document.getElementById('urlInput').value.trim();
+        var statusDiv = document.getElementById('statusMessage');
+        if(url === "") { alert("Pehle link dalein!"); return; }
+        statusDiv.innerHTML = "Video fetch ho rahi hai...";
+        try {
+            let response = await fetch('/get-video', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url })
+            });
+            let data = await response.json();
+            if (data.success) {
+                statusDiv.innerHTML = '<b>Taiyar hai!</b><br><a href="' + data.download_url + '" target="_blank" download="video.mp4" style="color: #fff; background: #28a745; padding: 8px 15px; display: inline-block; margin-top: 5px; border-radius: 5px; text-decoration: none;">Download Karein</a>';
+            } else {
+                statusDiv.innerHTML = "Error: " + data.message;
             }
+        } catch (err) {
+            statusDiv.innerHTML = "Kuch galat ho gaya.";
         }
+    }
     </script>
-    
+</body>
+</html>
 """
 
 @app.route('/')
@@ -75,21 +66,30 @@ def get_video():
     if not video_url:
         return jsonify({'success': False, 'message': 'URL nahi mila'})
     try:
-                ydl_opts = {
-            'format': 'best',
-            'extractor_args': {'youtube': {'player_client': ['ios', 'web']}},
-                }
+        # YouTube, Instagram aur anya sites ke liye versatile options
+        ydl_opts = {
+            'format': 'best/bestvideo+bestaudio/best',
+            'noplaylist': True,
+            'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
+        }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=False)
             download_url = info.get('url')
+            
+            # Agar direct url nahi milta toh formats me se best uthayenge
             if not download_url and 'formats' in info:
-                download_url = info['formats'][-1].get('url')
+                formats = info.get('formats', [])
+                for f in reversed(formats):
+                    if f.get('url') and f.get('vcodec') != 'none':
+                        download_url = f.get('url')
+                        break
+            
             if download_url:
                 return jsonify({'success': True, 'download_url': download_url})
             else:
-                return jsonify({'success': False, 'message': 'Link nahi nikal paya'})
+                return jsonify({'success': False, 'message': 'Download link nahi nikal paya'})
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)})
+        return jsonify({'success': False, 'message': 'Link invalid hai ya format support nahi hai.'})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
